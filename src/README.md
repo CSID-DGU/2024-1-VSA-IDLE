@@ -19,3 +19,18 @@ ROWS = [-0.5, -2.7]
 ```
 ![image](https://github.com/user-attachments/assets/ee7839e4-1af9-4574-abfb-d5784e7bcbc3)
 
+4. 로봇 name 부여방식 수정
+```
+namespace_x = i
+namespace_y = j
+if namespace_x < 0:
+ namespace_x = "16"
+else:
+ namespace_x = "0"
+if namespace_y > -2:
+ namespace_y = "05"
+else:
+ namespace_y = "2"
+name = "turtlebot" + namespace_x + "_" + namespace_y
+namespace = "/tb" + namespace_x + "_" + namespace_y
+```
