@@ -38,7 +38,7 @@ def generate_launch_description():
     )
 
 
-    turtlebot3_multi_robot = get_package_share_directory("turtlebot3_multi_robot")
+    turtlebot3_multi_robot = get_package_share_directory("turtlebot3_multi_robot_wide")
     launch_file_dir = os.path.join(turtlebot3_multi_robot, "launch")
 
     world = os.path.join(

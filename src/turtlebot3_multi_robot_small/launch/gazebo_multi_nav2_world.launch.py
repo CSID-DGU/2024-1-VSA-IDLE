@@ -58,9 +58,9 @@ def generate_launch_description():
     )
 
     
-    turtlebot3_multi_robot = get_package_share_directory('turtlebot3_multi_robot')
+    turtlebot3_multi_robot = get_package_share_directory('turtlebot3_multi_robot_small')
 
-    package_dir = get_package_share_directory('turtlebot3_multi_robot')
+    package_dir = get_package_share_directory('turtlebot3_multi_robot_small')
     nav_launch_dir = os.path.join(package_dir, 'launch', 'nav2_bringup')
 
     rviz_config_file = LaunchConfiguration('rviz_config_file')
@@ -75,8 +75,8 @@ def generate_launch_description():
     )
 
     world = os.path.join(
-        get_package_share_directory('turtlebot3_multi_robot'),
-        'worlds', 'multi_robot_world.world')
+        get_package_share_directory('turtlebot3_multi_robot_small'),
+        'worlds', 'small_square.world')
 
     gzserver_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
