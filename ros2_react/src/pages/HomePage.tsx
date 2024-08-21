@@ -265,7 +265,7 @@ export default function HomePage() {
                 <CardContent sx={{ p: 2 }}>
                   <MapArea>
                     <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'medium' }}>
-                      {selectedMap === 'warehouse1' ? '좁은 맵' : '넓은 맵'} 표시 영역
+                      {selectedMap === 'warehouse1' ? '패키징 스테이션' : '입하장'} 표시 영역
                     </Typography>
                   </MapArea>
                 </CardContent>
