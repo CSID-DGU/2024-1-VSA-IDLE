@@ -19,7 +19,7 @@
     "react-router-dom": "^6.26.0",
     "react-scripts": "5.0.1",
     "ros2d": "^0.10.0",
-    "roslib": "git+https://github.com/seonwoonam/roslibjs.git",
+    "roslib": "^1.4.1",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
   },

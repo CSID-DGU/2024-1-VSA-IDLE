@@ -8,7 +8,7 @@ import { styled } from '@mui/system';
 import ROSLIB, {ActionClient} from 'roslib';
 import { Map, Maximize2, Minimize2, Navigation } from 'lucide-react';
 
-type MapType = 'narrow' | 'wide';
+type MapType = 'warehouse1' | 'warehouse2';
 
 interface Robot {
   id: number;
@@ -98,7 +98,7 @@ const StatusDot = styled('span')<{ connected: boolean }>(({ theme, connected }) 
 
 export default function HomePage() {
     
-  const [selectedMap, setSelectedMap] = useState<MapType>('narrow');
+  const [selectedMap, setSelectedMap] = useState<MapType>('warehouse1');
   const [rosConnection, setRosConnection] = useState<boolean>(false);
   const [robots, setRobots] = useState<Robot[]>([
     { id: 1, name: 'Robot 1', destination: '', battery: 80 },
@@ -228,19 +228,20 @@ export default function HomePage() {
               <Box>
                 <Button
                   sx={{ px: 4 }}
-                  variant={selectedMap === 'narrow' ? 'contained' : 'outlined'}
-                  onClick={() => handleMapChange('narrow')}
-                  startIcon={<IconWrapper><Minimize2 size={20} /></IconWrapper>}
+                  variant={selectedMap === 'warehouse1' ? 'contained' : 'outlined'}
+                  onClick={() => handleMapChange('warehouse1')}
+                  startIcon={<IconWrapper>1</IconWrapper>}
                 >
-                  좁은 맵
+                  패키징 스테이션
                 </Button>
                 <Button
                   sx={{ px: 4 }}
-                  variant={selectedMap === 'wide' ? 'contained' : 'outlined'}
-                  onClick={() => handleMapChange('wide')}
-                  startIcon={<IconWrapper><Maximize2 size={20} /></IconWrapper>}
+                  variant={selectedMap === 'warehouse2' ? 'contained' : 'outlined'}
+                  onClick={() => handleMapChange('warehouse2')}
+                  startIcon={<IconWrapper>2</IconWrapper>}
+                  disabled
                 >
-                  넓은 맵
+                  입하장
                 </Button>
               </Box>
 
@@ -264,7 +265,7 @@ export default function HomePage() {
                 <CardContent sx={{ p: 2 }}>
                   <MapArea>
                     <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'medium' }}>
-                      {selectedMap === 'narrow' ? '좁은 맵' : '넓은 맵'} 표시 영역
+                      {selectedMap === 'warehouse1' ? '좁은 맵' : '넓은 맵'} 표시 영역
                     </Typography>
                   </MapArea>
                 </CardContent>
