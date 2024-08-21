@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   AppBar, Toolbar, Typography, Container, Grid, Card, CardHeader, CardContent,
   Button, Select, MenuItem, SelectChangeEvent, ThemeProvider, createTheme, 
   CssBaseline, Box
 } from '@mui/material';
 import { styled } from '@mui/system';
+import ROSLIB, {ActionClient} from 'roslib';
 import { Map, Maximize2, Minimize2, Navigation } from 'lucide-react';
 
 type MapType = 'narrow' | 'wide';
@@ -79,15 +80,68 @@ const MapArea = styled(Box)(({ theme }) => ({
   borderRadius: theme.shape.borderRadius,
 }));
 
+const StatusIndicator = styled('span')<{ connected: boolean }>(({ theme, connected }) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  color: connected ? theme.palette.success.main : theme.palette.error.main,
+  fontWeight: 'bold',
+  fontSize : '20px'
+}));
+
+const StatusDot = styled('span')<{ connected: boolean }>(({ theme, connected }) => ({
+  width: 14,
+  height: 14,
+  borderRadius: '30%',
+  backgroundColor: connected ? theme.palette.success.main : theme.palette.error.main,
+  marginRight: theme.spacing(1.5),
+}));
+
 export default function HomePage() {
     
   const [selectedMap, setSelectedMap] = useState<MapType>('narrow');
+  const [rosConnection, setRosConnection] = useState<boolean>(false);
   const [robots, setRobots] = useState<Robot[]>([
     { id: 1, name: 'Robot 1', destination: '', battery: 80 },
     { id: 2, name: 'Robot 2', destination: '', battery: 65 },
     { id: 3, name: 'Robot 3', destination: '', battery: 90 },
     { id: 4, name: 'Robot 4', destination: '', battery: 90 },
   ]);
+
+  const [ros, setRos] = useState<ROSLIB.Ros | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+      const rosInstance = new ROSLIB.Ros({
+          url: 'ws://localhost:9090'
+      });
+
+      rosInstance.on('connection', () => {
+          console.log('Connected to ROS');
+          setRosConnection(true);
+      });
+
+      rosInstance.on('error', (error) => {
+          console.log('Error connecting to ROS: ', error);
+      });
+
+      rosInstance.on('close', () => {
+          console.log('Connection to ROS closed');
+      });
+
+      var image = new ROSLIB.Topic({
+          ros: rosInstance,
+          name: '/color/image_raw/compressed',
+          messageType: 'sensor_msgs/CompressedImage'
+      });
+
+      image.subscribe(function (message: ROSLIB.Message) {
+          console.log('Received image: ', message);
+          var data = 'data:image/png;base64,' + (message as any).data;
+          document.getElementById('image_sub')?.setAttribute('src', data);
+      });
+
+      setRos(rosInstance);
+  }, []);
 
   const handleMapChange = (value: MapType) => {
     setSelectedMap(value);
@@ -98,7 +152,67 @@ export default function HomePage() {
     setRobots(robots.map(robot => 
       robot.id === robotId ? { ...robot, destination } : robot
     ));
+
+    sendGoal(destination);
   };
+
+  function sendGoal(destination : string) {
+    if(!ros) return;
+
+
+    const actionClient = new ROSLIB.ActionClient({
+        ros: ros,
+        serverName: '/navigate_to_pose',
+        actionName: 'nav2_msgs/action/NavigateToPose'
+    });
+
+    const goal = new ROSLIB.Goal({
+        actionClient: actionClient,
+        goalMessage: {
+            pose: {
+                header: {
+                    frame_id: 'map'
+                },
+                pose: {
+                    position: {
+                        x: 0.0,
+                        y: 10.0,
+                        z: 0.0
+                    },
+                    orientation: {
+                        x: 0.0,
+                        y: 0.0,
+                        z: 0.0,
+                        w: 1.0
+                    }
+                }
+            }
+        }
+    });
+
+    goal.on('status', (status) => {
+      console.log('Goal status: ' + status.status);
+      if (status.status === 5) { // 5 is the status code for REJECTED
+          console.error('Goal was rejected');
+      }
+  });
+
+    goal.on('result', function (result: any) {
+        console.log('Goal result: ', result);
+    });
+
+    goal.on('feedback', (feedback) => {
+      console.log('Received feedback:', feedback);
+  });
+
+    goal.on('timeout', () => {
+        console.error('Action did not complete before timeout');
+    });
+
+    goal.send();
+
+    console.log('전송 완료');
+  }
 
   return (
     <ThemeProvider theme={theme}>
@@ -110,26 +224,32 @@ export default function HomePage() {
           </Toolbar>
         </AppBar>
         <Container maxWidth={false} sx={{ mt: 4, px: 4 }}>
-            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                        <Button
-                        sx={{ px: 4 }}
-                        variant={selectedMap === 'narrow' ? 'contained' : 'outlined'}
-                        onClick={() => handleMapChange('narrow')}
-                        startIcon={<IconWrapper><Minimize2 size={20} /></IconWrapper>}
-                        >
-                        좁은 맵
-                        </Button>
-                        <Button
-                        sx={{ px: 4 }}
-                        variant={selectedMap === 'wide' ? 'contained' : 'outlined'}
-                        onClick={() => handleMapChange('wide')}
-                        startIcon={<IconWrapper><Maximize2 size={20} /></IconWrapper>}
-                        >
-                        넓은 맵
-                        </Button>
-                
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, mb: 3 }}>
+              <Box>
+                <Button
+                  sx={{ px: 4 }}
+                  variant={selectedMap === 'narrow' ? 'contained' : 'outlined'}
+                  onClick={() => handleMapChange('narrow')}
+                  startIcon={<IconWrapper><Minimize2 size={20} /></IconWrapper>}
+                >
+                  좁은 맵
+                </Button>
+                <Button
+                  sx={{ px: 4 }}
+                  variant={selectedMap === 'wide' ? 'contained' : 'outlined'}
+                  onClick={() => handleMapChange('wide')}
+                  startIcon={<IconWrapper><Maximize2 size={20} /></IconWrapper>}
+                >
+                  넓은 맵
+                </Button>
+              </Box>
+
+              <StatusIndicator connected={rosConnection}>
+                <StatusDot connected={rosConnection} />
+                {rosConnection ? '연결중' : '연결 없음'}
+              </StatusIndicator>
             </Box>
-          
+
           <Grid container spacing={3}>
             <Grid item xs={12} lg={8}>
               <Card>
