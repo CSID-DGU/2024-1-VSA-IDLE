@@ -16,6 +16,31 @@ interface Robot {
   destination: string;
   battery: number;
 }
+interface MapMetaData {
+  map_load_time: { secs: number; nsecs: number };
+  resolution: number;
+  width: number;
+  height: number;
+  origin: {
+    position: { x: number; y: number; z: number };
+    orientation: { x: number; y: number; z: number; w: number };
+  };
+}
+
+interface OccupancyGrid {
+  header: {
+    seq: number;
+    stamp: { secs: number; nsecs: number };
+    frame_id: string;
+  };
+  info: MapMetaData;
+  data: number[];
+}
+interface RobotPosition {
+  x: number;
+  y: number;
+  theta: number;  // 로봇의 방향(회전각도)
+}
 
 // Lucide 아이콘을 MUI 아이콘 스타일로 감싸는 컴포넌트
 const IconWrapper = styled('span')(({ theme }) => ({
@@ -78,6 +103,7 @@ const MapArea = styled(Box)(({ theme }) => ({
   justifyContent: 'center',
   border: `1px solid ${theme.palette.grey[300]}`,
   borderRadius: theme.shape.borderRadius,
+  position: 'relative',
 }));
 
 const StatusIndicator = styled('span')<{ connected: boolean }>(({ theme, connected }) => ({
@@ -97,7 +123,8 @@ const StatusDot = styled('span')<{ connected: boolean }>(({ theme, connected }) 
 }));
 
 export default function HomePage() {
-    
+  const [robotPosition, setRobotPosition] = useState<RobotPosition | null>(null);
+  const [mapImage, setMapImage] = useState<string|null>(null);
   const [selectedMap, setSelectedMap] = useState<MapType>('warehouse1');
   const [rosConnection, setRosConnection] = useState<boolean>(false);
   const [robots, setRobots] = useState<Robot[]>([
@@ -139,6 +166,64 @@ export default function HomePage() {
           var data = 'data:image/png;base64,' + (message as any).data;
           document.getElementById('image_sub')?.setAttribute('src', data);
       });
+
+      const mapTopic = new ROSLIB.Topic({
+          ros: rosInstance,
+          name: '/map',
+          messageType: 'nav_msgs/OccupancyGrid'
+      });
+
+      mapTopic.subscribe((message: ROSLIB.Message) => {
+          const messageData = message as OccupancyGrid;
+          const mapData : number[] = (message as any).data;
+          console.log('Received map data: ', message);
+          const width: number = messageData.info.width;
+          const height: number = messageData.info.height;
+    
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+
+          if (ctx) {
+            const imageData = ctx.createImageData(width, height);
+    
+            for (let i = 0; i < mapData.length; i++) {
+              const value = mapData[i];
+              const color = value === 0 ? 255 : value === 100 ? 0 : 127;
+              imageData.data[i * 4] = color; // R
+              imageData.data[i * 4 + 1] = color; // G
+              imageData.data[i * 4 + 2] = color; // B
+              imageData.data[i * 4 + 3] = 255; // A
+            }
+    
+            ctx.putImageData(imageData, 0, 0);
+            setMapImage(canvas.toDataURL());
+          }
+      });
+
+      const poseTopic = new ROSLIB.Topic({
+          ros: rosInstance,
+          name: '/robot_pose',
+          messageType: 'geometry_msgs/PoseStamped'
+      });
+
+      poseTopic.subscribe((message: ROSLIB.Message) => {
+          console.log('Received robot pose: ', message);
+          const position = (message as any).pose.position;
+          const orientation = (message as any).pose.orientation;
+
+          const siny_cosp = 2 * (orientation.w * orientation.z + orientation.x * orientation.y);
+          const cosy_cosp = 1 - 2 * (orientation.y * orientation.y + orientation.z * orientation.z);
+          const theta = Math.atan2(siny_cosp, cosy_cosp);
+    
+          setRobotPosition({
+            x: position.x,
+            y: position.y,
+            theta: theta
+          });
+      });
+
 
       setRos(rosInstance);
   }, []);
@@ -264,9 +349,28 @@ export default function HomePage() {
                 />
                 <CardContent sx={{ p: 2 }}>
                   <MapArea>
-                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 'medium' }}>
-                      {selectedMap === 'warehouse1' ? '패키징 스테이션' : '입하장'} 표시 영역
-                    </Typography>
+                    {mapImage && (
+                      <img
+                        src={mapImage}
+                        alt="Robot Map"
+                        style={{ height: '100%', width: 'auto', margin: 'auto', position: 'absolute',top: 0, bottom: 0, left: 0, right: 0 }}
+                      />
+                    )}
+                    {robotPosition && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: `calc(50% - ${robotPosition.y * 20}px)`,
+                          left: `calc(50% + ${robotPosition.x * 20}px)`,
+                          width: '10px',
+                          height: '10px',
+                          backgroundColor: 'red',
+                          transform: `rotate(${robotPosition.theta}rad)`,
+                          transformOrigin: 'center',
+                          borderRadius: '50%',
+                        }}
+                      />
+                    )}
                   </MapArea>
                 </CardContent>
               </Card>
