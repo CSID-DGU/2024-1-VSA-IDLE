@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   AppBar, Toolbar, Typography, Container, Grid, Card, CardHeader, CardContent,
   Button, Select, MenuItem, SelectChangeEvent, ThemeProvider, createTheme, 
@@ -132,6 +132,16 @@ export default function HomePage() {
   const [ros, setRos] = useState<ROSLIB.Ros | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  function base64ToUint8Array(base64: string): Uint8Array {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  }
+  
   useEffect(() => {
       const rosInstance = new ROSLIB.Ros({
           url: 'ws://localhost:9090'
@@ -150,64 +160,57 @@ export default function HomePage() {
           console.log('Connection to ROS closed');
       });
 
-      var image = new ROSLIB.Topic({
-          ros: rosInstance,
-          name: '/color/image_raw/compressed',
-          messageType: 'sensor_msgs/CompressedImage'
-      });
-
-      image.subscribe(function (message: ROSLIB.Message) {
-          console.log('Received image: ', message);
-          var data = 'data:image/png;base64,' + (message as any).data;
-          document.getElementById('image_sub')?.setAttribute('src', data);
-      });
-
-      const mapTopic = new ROSLIB.Topic({
-          ros: rosInstance,
-          name: '/map',
-          messageType: 'nav_msgs/OccupancyGrid'
-      });
-
-      mapTopic.subscribe((message: ROSLIB.Message) => {
-          const messageData = message as OccupancyGrid;
-          const mapData : number[] = (message as any).data;
-          console.log('Received map data: ', message);
-          const width: number = messageData.info.width;
-          const height: number = messageData.info.height;
-    
-          const canvas = document.createElement("canvas");
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-
-          if (ctx) {
-            const imageData = ctx.createImageData(width, height);
-    
-            for (let i = 0; i < mapData.length; i++) {
-              const value = mapData[i];
-              const color = value === 0 ? 255 : value === 100 ? 0 : 127;
-              imageData.data[i * 4] = color; // R
-              imageData.data[i * 4 + 1] = color; // G
-              imageData.data[i * 4 + 2] = color; // B
-              imageData.data[i * 4 + 3] = 255; // A
-            }
-    
-            ctx.putImageData(imageData, 0, 0);
-            setMapImage(canvas.toDataURL());
-          }
-      });
-
       const cameraTopic = new ROSLIB.Topic({
         ros: rosInstance,
-        name: '/fixed_camera/image_raw',
-        messageType: 'sensor_msgs/CompressedImage'
+        name: '/gazebo/fixed_camera/image_raw',
+        messageType: 'sensor_msgs/msg/Image'
       });
   
       cameraTopic.subscribe((message) => {
-        const imageData = 'data:image/png;base64,' + (message as any).data;
-        setImageSrc(imageData);
-      });
+        const messageData = message as any;
+        const base64Data = messageData.data;
+        const imageData = base64ToUint8Array(base64Data);
+        const width = messageData.width;
+        const height = messageData.height;
+        const encoding = messageData.encoding;
 
+        console.log("Image received:", { width, height, encoding, dataLength: imageData.length });
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+
+        if (ctx) {
+            const imgData = ctx.createImageData(width, height);
+
+            let isAllGray = true;
+            let minVal = 255, maxVal = 0;
+
+            for (let i = 0; i < width * height; i++) {
+                const r = imageData[i * 3];
+                const g = imageData[i * 3 + 1];
+                const b = imageData[i * 3 + 2];
+
+                imgData.data[i * 4] = r;
+                imgData.data[i * 4 + 1] = g;
+                imgData.data[i * 4 + 2] = b;
+                imgData.data[i * 4 + 3] = 255;
+
+                if (r !== g || g !== b) {
+                    isAllGray = false;
+                }
+
+                minVal = Math.min(minVal, r, g, b);
+                maxVal = Math.max(maxVal, r, g, b);
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+            setMapImage(canvas.toDataURL());
+        }
+    });
+
+      
       setRos(rosInstance);
   }, []);
 
@@ -333,13 +336,12 @@ export default function HomePage() {
                 <CardContent sx={{ p: 2 }}>
                   <MapArea>
                     {mapImage && (
-                      <img
-                        src={mapImage}
-                        alt="Robot Map"
-                        style={{ height: '100%', width: 'auto', margin: 'auto', position: 'absolute',top: 0, bottom: 0, left: 0, right: 0 }}
-                      />
-                    )}
-                    {imageSrc ? <img src={imageSrc} alt="Fixed Camera View" /> : <p>Loading camera...</p>}
+                        <img
+                          src={mapImage}
+                          alt="Robot Map"
+                          style={{ height: '100%', width: 'auto', margin: 'auto', position: 'absolute',top: 0, bottom: 0, left: 0, right: 0 }}
+                        />
+                      )}
                   </MapArea>
                 </CardContent>
               </Card>
