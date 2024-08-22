@@ -36,11 +36,6 @@ interface OccupancyGrid {
   info: MapMetaData;
   data: number[];
 }
-interface RobotPosition {
-  x: number;
-  y: number;
-  theta: number;  // 로봇의 방향(회전각도)
-}
 
 // Lucide 아이콘을 MUI 아이콘 스타일로 감싸는 컴포넌트
 const IconWrapper = styled('span')(({ theme }) => ({
@@ -123,7 +118,7 @@ const StatusDot = styled('span')<{ connected: boolean }>(({ theme, connected }) 
 }));
 
 export default function HomePage() {
-  const [robotPosition, setRobotPosition] = useState<RobotPosition | null>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [mapImage, setMapImage] = useState<string|null>(null);
   const [selectedMap, setSelectedMap] = useState<MapType>('warehouse1');
   const [rosConnection, setRosConnection] = useState<boolean>(false);
@@ -202,28 +197,16 @@ export default function HomePage() {
           }
       });
 
-      const poseTopic = new ROSLIB.Topic({
-          ros: rosInstance,
-          name: '/robot_pose',
-          messageType: 'geometry_msgs/PoseStamped'
+      const cameraTopic = new ROSLIB.Topic({
+        ros: rosInstance,
+        name: '/fixed_camera/image_raw',
+        messageType: 'sensor_msgs/CompressedImage'
       });
-
-      poseTopic.subscribe((message: ROSLIB.Message) => {
-          console.log('Received robot pose: ', message);
-          const position = (message as any).pose.position;
-          const orientation = (message as any).pose.orientation;
-
-          const siny_cosp = 2 * (orientation.w * orientation.z + orientation.x * orientation.y);
-          const cosy_cosp = 1 - 2 * (orientation.y * orientation.y + orientation.z * orientation.z);
-          const theta = Math.atan2(siny_cosp, cosy_cosp);
-    
-          setRobotPosition({
-            x: position.x,
-            y: position.y,
-            theta: theta
-          });
+  
+      cameraTopic.subscribe((message) => {
+        const imageData = 'data:image/png;base64,' + (message as any).data;
+        setImageSrc(imageData);
       });
-
 
       setRos(rosInstance);
   }, []);
@@ -356,21 +339,7 @@ export default function HomePage() {
                         style={{ height: '100%', width: 'auto', margin: 'auto', position: 'absolute',top: 0, bottom: 0, left: 0, right: 0 }}
                       />
                     )}
-                    {robotPosition && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          top: `calc(50% - ${robotPosition.y * 20}px)`,
-                          left: `calc(50% + ${robotPosition.x * 20}px)`,
-                          width: '10px',
-                          height: '10px',
-                          backgroundColor: 'red',
-                          transform: `rotate(${robotPosition.theta}rad)`,
-                          transformOrigin: 'center',
-                          borderRadius: '50%',
-                        }}
-                      />
-                    )}
+                    {imageSrc ? <img src={imageSrc} alt="Fixed Camera View" /> : <p>Loading camera...</p>}
                   </MapArea>
                 </CardContent>
               </Card>
