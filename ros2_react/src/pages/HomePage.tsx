@@ -11,8 +11,7 @@ import { Map, Maximize2, Minimize2, Navigation } from 'lucide-react';
 type MapType = 'warehouse1' | 'warehouse2';
 
 interface Robot {
-  id: number;
-  name: string;
+  namespace: string;
   destination: string;
   battery: number;
 }
@@ -123,10 +122,9 @@ export default function HomePage() {
   const [selectedMap, setSelectedMap] = useState<MapType>('warehouse1');
   const [rosConnection, setRosConnection] = useState<boolean>(false);
   const [robots, setRobots] = useState<Robot[]>([
-    { id: 1, name: 'Robot 1', destination: '', battery: 80 },
-    { id: 2, name: 'Robot 2', destination: '', battery: 65 },
-    { id: 3, name: 'Robot 3', destination: '', battery: 90 },
-    { id: 4, name: 'Robot 4', destination: '', battery: 90 },
+    { namespace: 'tb1', destination: '', battery: 80 },
+    { namespace: 'tb2', destination: '', battery: 65 },
+    { namespace: 'tb3', destination: '', battery: 90 },
   ]);
 
   const [ros, setRos] = useState<ROSLIB.Ros | null>(null);
@@ -218,69 +216,62 @@ export default function HomePage() {
     setSelectedMap(value);
   };
 
-  const handleDestinationChange = (robotId: number, event: SelectChangeEvent<string>) => {
+  const handleDestinationChange = (robotId: string, event: SelectChangeEvent<string>) => {
     const destination = event.target.value;
     setRobots(robots.map(robot => 
-      robot.id === robotId ? { ...robot, destination } : robot
+      robot.namespace === robotId ? { ...robot, destination } : robot
     ));
 
-    sendGoal(destination);
+    sendGoal(robotId,destination);
   };
 
-  function sendGoal(destination : string) {
+  function sendGoal(nameSpace: string, destination : string) {
     if(!ros) return;
+    var destinationX = 0.0;
+    var destinationY = 0.0;
+    const actionName = '/' + nameSpace + '/navigate_to_pose/goal';
 
-
-    const actionClient = new ROSLIB.ActionClient({
-        ros: ros,
-        serverName: '/navigate_to_pose',
-        actionName: 'nav2_msgs/action/NavigateToPose'
+    if (destination === 'destination1') {
+      destinationX = -1;
+      destinationY = -1.5;
+    } else if( destination === 'destination2') {
+      destinationX = -1;
+      destinationY = 1.5;
+    }else if( destination === 'destination3') {
+      destinationX = 1;
+      destinationY = -1.5;
+    }
+    
+    const goalTopic = new ROSLIB.Topic({
+      ros: ros,
+      name: actionName,  
+      messageType: 'geometry_msgs/PoseStamped'  
     });
 
-    const goal = new ROSLIB.Goal({
-        actionClient: actionClient,
-        goalMessage: {
-            pose: {
-                header: {
-                    frame_id: 'map'
-                },
-                pose: {
-                    position: {
-                        x: 0.0,
-                        y: 10.0,
-                        z: 0.0
-                    },
-                    orientation: {
-                        x: 0.0,
-                        y: 0.0,
-                        z: 0.0,
-                        w: 1.0
-                    }
-                }
-            }
+    // 목표 메시지를 정의합니다.
+    const goalMessage = {
+      header: {
+        frame_id: 'map'  // 목표를 기준으로 하는 프레임
+      },
+      pose: {
+        position: {
+          x: destinationX,  // 목표 위치의 x 좌표
+          y: destinationY,  // 목표 위치의 y 좌표
+          z: 0.0  // 목표 위치의 z 좌표
+        },
+        orientation: {
+          x: 0.0,  // 목표 방향의 x 성분
+          y: 0.0,  // 목표 방향의 y 성분
+          z: 0.0,  // 목표 방향의 z 성분
+          w: 1.0  // 목표 방향의 w 성분 (쿼터니언)
         }
-    });
-
-    goal.on('status', (status) => {
-      console.log('Goal status: ' + status.status);
-      if (status.status === 5) { // 5 is the status code for REJECTED
-          console.error('Goal was rejected');
       }
-  });
+    };
 
-    goal.on('result', function (result: any) {
-        console.log('Goal result: ', result);
-    });
+    // 목표를 전송합니다.
+    goalTopic.publish(new ROSLIB.Message(goalMessage));
 
-    goal.on('feedback', (feedback) => {
-      console.log('Received feedback:', feedback);
-  });
-
-    goal.on('timeout', () => {
-        console.error('Action did not complete before timeout');
-    });
-
-    goal.send();
+    console.log('Goal sent:', goalMessage);
 
     console.log('전송 완료');
   }
@@ -359,10 +350,10 @@ export default function HomePage() {
                 />
                 <CardContent>
                   {robots.map(robot => (
-                    <Box key={robot.id} sx={{ mb: 3, '&:last-child': { mb: 0 } }}>
+                    <Box key={robot.namespace} sx={{ mb: 3, '&:last-child': { mb: 0 } }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
-                          {robot.name}
+                          {robot.namespace}
                         </Typography>
                         <StyledBatteryIndicator>
                           배터리 {robot.battery}%
@@ -370,7 +361,7 @@ export default function HomePage() {
                       </Box>
                       <Select
                         value={robot.destination}
-                        onChange={(event: SelectChangeEvent<string>) => handleDestinationChange(robot.id, event)}
+                        onChange={(event: SelectChangeEvent<string>) => handleDestinationChange(robot.namespace, event)}
                         fullWidth
                         size="small"
                       >
