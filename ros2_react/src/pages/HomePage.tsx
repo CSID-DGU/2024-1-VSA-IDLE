@@ -172,8 +172,6 @@ export default function HomePage() {
         const height = messageData.height;
         const encoding = messageData.encoding;
 
-        console.log("Image received:", { width, height, encoding, dataLength: imageData.length });
-
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
@@ -226,10 +224,11 @@ export default function HomePage() {
   };
 
   function sendGoal(nameSpace: string, destination : string) {
+    console.log("여기")
     if(!ros) return;
     var destinationX = 0.0;
     var destinationY = 0.0;
-    const actionName = '/' + nameSpace + '/navigate_to_pose/goal';
+    const actionName = '/' + nameSpace + '/goal_pose';
 
     if (destination === 'destination1') {
       destinationX = -1;
@@ -270,6 +269,7 @@ export default function HomePage() {
 
     // 목표를 전송합니다.
     goalTopic.publish(new ROSLIB.Message(goalMessage));
+    goalTopic.unsubscribe();
 
     console.log('Goal sent:', goalMessage);
 
