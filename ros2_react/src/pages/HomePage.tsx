@@ -239,6 +239,17 @@ export default function HomePage() {
     }else if( destination === 'destination3') {
       destinationX = 1;
       destinationY = -1.5;
+    }else if( destination === 'destination4') {
+      destinationX = -3.0;
+      destinationY = 1.0;
+    }
+    else if( destination === 'destination5') {
+      destinationX = -3.0;
+      destinationY = 0.0;
+    }
+    else if( destination === 'destination6') {
+      destinationX = -3.0;
+      destinationY = -1.0;
     }
     
     const goalTopic = new ROSLIB.Topic({
@@ -366,9 +377,12 @@ export default function HomePage() {
                         size="small"
                       >
                         <MenuItem value="">목적지 선택</MenuItem>
-                        <MenuItem value="destination1">목적지 1</MenuItem>
-                        <MenuItem value="destination2">목적지 2</MenuItem>
-                        <MenuItem value="destination3">목적지 3</MenuItem>
+                        <MenuItem value="destination1">A구역</MenuItem>
+                        <MenuItem value="destination2">B구역</MenuItem>
+                        <MenuItem value="destination3">C구역</MenuItem>
+                        <MenuItem value="destination4">E구역</MenuItem>
+                        <MenuItem value="destination5">F구역</MenuItem>
+                        <MenuItem value="destination6">G구역</MenuItem>
                       </Select>
                     </Box>
                   ))}
