@@ -124,7 +124,7 @@ export default function HomePage() {
   const [robots, setRobots] = useState<Robot[]>([
     { namespace: 'tb1', destination: '', battery: 80 },
     { namespace: 'tb2', destination: '', battery: 65 },
-    { namespace: 'tb3', destination: '', battery: 90 },
+    // { namespace: 'tb3', destination: '', battery: 90 },
   ]);
 
   const [ros, setRos] = useState<ROSLIB.Ros | null>(null);
